@@ -35,6 +35,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 public class HelloFX extends Application {
 
@@ -47,15 +49,25 @@ public class HelloFX extends Application {
         imageView.setFitHeight(200);
         imageView.setPreserveRatio(true);
 
-        VBox root = new VBox(30, imageView, label);
+        VBox root = new VBox(30, label);
         root.setAlignment(Pos.CENTER);
         Scene scene = new Scene(root, 640, 480);
-        scene.getStylesheets().add(HelloFX.class.getResource("styles.css").toExternalForm());
+        // scene.getStylesheets().add(HelloFX.class.getResource("styles.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
 
+    @CEntryPoint(name = "gluon_main")
+    static void gluonMain(IsolateThread thread) {
+System.err.println("[JVDBG] HelloFX, CEntrypoint invoked, now launch JavaFX framework");
+System.setProperty("prism.verbose", "true");
+System.setProperty("com.sun.javafx.isEmbedded", "true");
+System.setProperty("javafx.platform", "ios");
+        launch();
+    }
+
     public static void main(String[] args) {
+System.setProperty("prism.verbose", "true");
         launch(args);
     }
 

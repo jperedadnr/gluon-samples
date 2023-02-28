@@ -24,6 +24,19 @@
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.graalvm.nativeimage</groupId>
+            <artifactId>library-support</artifactId>
+            <scope>provided</scope>
+            <version>22.0.0.2</version>
+        </dependency>
+<!--
+        <dependency>
+            <groupId>org.graalvm.nativeimage</groupId>
+            <artifactId>svm</artifactId>
+            <version>22.3.1</version>
+        </dependency>
+-->
     </dependencies>
 
     <build>
@@ -48,6 +61,7 @@
                 <artifactId>gluonfx-maven-plugin</artifactId>
                 <version>${gluonfx.maven.plugin.version}</version>
                 <configuration>
+<verbose>true</verbose>
                      <target>${gluonfx.target}</target>
                      <mainClass>${main.class}</mainClass>
                 </configuration>
