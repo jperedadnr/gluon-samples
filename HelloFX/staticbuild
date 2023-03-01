@@ -1,0 +1,120 @@
+Get Substrate from https://github.com/johanvos/substrate/tree/entropy
+
+run mvn clean gluonfx:build gluonfx:staticlib
+
+Create an XCode project. Add a UIView (or more) and a button that you can use to trigger starting a JavaFX app.
+When clicking the button, invoke startJavaFXApp (see implementation in localgl.m)
+
+Add generated header file (hellofx.hellofx.h + graal-isolate header) to XCode project
+
+Add static libs to the XCode project:
+* Substrate-generated libHelloFX.a (which contains the application object file + helpers).
+* java static libs (e.g. libjava.a, libzip.a)
+* GraalVM static libs (e.g. libdarwin.a)
+* JavaFX static libs: get those from https://github.com/johanvos/gluonjfx/tree/hybridios fork
+
+
+ViewController.m:
+
+#import "ViewController.h"
+#import <GLKit/GLKit.h>
+
+@interface ViewController ()
+
+@end
+
+extern void startJavaFXApp();
+@implementation ViewController
+
+- (void)graalThread:(id)argument {
+    @autoreleasepool {
+        NSLog(@"IN NEW THREAD");
+        startJavaFXApp();
+        NSLog(@"NEWCurrent thread = %@", [NSThread currentThread]);
+        NSLog(@"NEWMain thread = %@", [NSThread mainThread]);
+    }
+}
+- (void)myAction:(UIButton *)sender {
+    NSLog(@"ACTION INVOKED!");
+    NSLog(@"Current thread = %@", [NSThread currentThread]);
+    NSLog(@"Main thread = %@", [NSThread mainThread]);
+    [self performSelectorInBackground:@selector(graalThread:) withObject:(NULL)];
+    NSLog(@"ACTION DONE!");
+
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    NSLog(@"Loading ViewController. Root window = %@", [[UIApplication sharedApplication].windows firstObject]);
+    
+    // Do any additional setup after loading the view.
+    
+    double mwidth = self.view.frame.size.width;
+    
+    CGRect frm0 = CGRectMake(0., 0, mwidth, 120);
+
+    UIView *topView = [[UIView alloc] initWithFrame: frm0];
+    topView.backgroundColor = [UIColor greenColor];
+
+    CGRect br = CGRectMake(100,20,100,30);
+    UIButton *button = [[UIButton alloc] initWithFrame:br];
+    [button setTitle:@"Click me" forState:UIControlStateNormal];
+    [button addTarget:self action:@selector(myAction:) forControlEvents:UIControlEventTouchUpInside];
+    [topView addSubview:button];
+    [self.view addSubview:topView];
+    
+    // Just a silly blue rect that will partially be hidden by the JavaFX app
+    UIView *tmpView = [[UIView alloc] initWithFrame:CGRectMake(10, 200, 200, 100 )];
+    tmpView.backgroundColor = [UIColor blueColor];
+    NSLog(@"Added topview to %@", self.view);
+    NSLog(@"Current Thread: %@", [NSThread currentThread]);
+    [self.view addSubview:tmpView];
+
+    NSLog(@"Done!");
+    NSLog(@"frame = %@", self.view);
+}
+
+@end
+
+
+Helper file: (localgl.m)
+#import <Foundation/Foundation.h>
+#import "hellofx.hellofx.h"
+
+extern int JNI_OnLoad_prism_es2();
+extern int JNI_OnLoad_glass();
+extern int JNI_OnLoad_javafx_font();
+extern int JNI_OnLoad_nativeiio();
+extern void Java_com_sun_prism_es2_IOSGLDrawable_nGetDummyDrawable();
+extern void Java_com_sun_glass_ui_ios_IosWindow__1createWindow();
+extern void Java_com_sun_glass_ui_ios_IosView__1create();
+extern void Java_com_sun_glass_ui_ios_IosCursor__1set();
+extern void Java_com_sun_glass_ui_ios_IosGestureSupport__1initIDs();
+void loadlibs() {
+    JNI_OnLoad_prism_es2();
+    JNI_OnLoad_glass();
+    JNI_OnLoad_javafx_font();
+    JNI_OnLoad_nativeiio();
+    Java_com_sun_prism_es2_IOSGLDrawable_nGetDummyDrawable();
+    Java_com_sun_glass_ui_ios_IosWindow__1createWindow();
+    Java_com_sun_glass_ui_ios_IosView__1create();
+    Java_com_sun_glass_ui_ios_IosCursor__1set();
+    Java_com_sun_glass_ui_ios_IosGestureSupport__1initIDs();
+}
+
+/**
+ Invoked by a click on the button. This will create a GraalVM thread and start the JavaFX app
+ */
+void startJavaFXApp() {
+    graal_isolatethread_t *thread = NULL;
+    int tres = graal_create_isolate(NULL, NULL, &thread);
+    if (tres == 0) {
+        fprintf(stderr, "Created thread!\n");
+        fprintf(stderr, "thread = %p\n", thread);
+        gluon_main(thread);
+        fprintf(stderr, "MAIN DONE");
+    } else {
+        fprintf(stderr, "Couldn't create an isolate, tres = %d", tres);
+    }
+}
+
