@@ -200,7 +200,7 @@ void startJavaFXApp() {
 
 5.6 Static libs
 
-Download this file with static libraries, unzip it and add them to the Xcode project (via drag and drop from Finder).
+Download this file https://download2.gluonhq.com/tmp/staticlibs.zip with static libraries, unzip it and add them to the Xcode project (via drag and drop from Finder).
 
 In Xcode, go to Build Phases and see that you have 42 static libraries (some of then are not really needed). And press the `+` button to add `libz.1.2.11.tbd`.
 
