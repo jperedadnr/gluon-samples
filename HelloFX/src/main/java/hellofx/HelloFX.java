@@ -49,9 +49,9 @@ public class HelloFX extends Application {
         imageView.setFitHeight(200);
         imageView.setPreserveRatio(true);
 
-        VBox root = new VBox(30, label);
+        VBox root = new VBox(30, imageView, label);
         root.setAlignment(Pos.CENTER);
-        Scene scene = new Scene(root, 640, 480);
+        Scene scene = new Scene(root);
         // scene.getStylesheets().add(HelloFX.class.getResource("styles.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
