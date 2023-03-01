@@ -1,21 +1,83 @@
-Get Substrate from https://github.com/johanvos/substrate/tree/entropy
+Build instructions
 
-run mvn clean gluonfx:build gluonfx:staticlib
+1. Substrate
 
-Create an XCode project. Add a UIView (or more) and a button that you can use to trigger starting a JavaFX app.
-When clicking the button, invoke startJavaFXApp (see implementation in localgl.m)
+Get Substrate from https://github.com/johanvos/substrate/tree/entropy:
 
-Add generated header file (hellofx.hellofx.h + graal-isolate header) to XCode project
+- Either clone it: `git clone --single-branch --branch entropy https://github.com/johanvos/substrate.git`
+- or download it from https://github.com/johanvos/substrate/archive/refs/heads/entropy.zip and unzip it.
 
-Add static libs to the XCode project:
-* Substrate-generated libHelloFX.a (which contains the application object file + helpers).
-* java static libs (e.g. libjava.a, libzip.a)
-* GraalVM static libs (e.g. libdarwin.a)
-* JavaFX static libs: get those from https://github.com/johanvos/gluonjfx/tree/hybridios fork
+Build:
+```
+cd substrate
+sh gradlew publishToMavenLocal
 
+2. GluonFX plugin
 
-ViewController.m:
+Get the plugin from https://github.com/johanvos/gluonfx-maven-plugin/tree/staticlib:
 
+- Either clone it: `git clone --single-branch --branch staticlib https://github.com/johanvos/gluonfx-maven-plugin.git`
+- or download it from https://github.com/johanvos/gluonfx-maven-plugin/archive/refs/heads/staticlib.zip and unzip it.
+
+Build:
+```
+cd gluonfx-maven-plugin
+mvn clean install
+```
+
+3. GraalVM
+
+Download and unzip from here: https://github.com/gluonhq/graal/releases/tag/gluon-22.1.0.1-Final
+
+For M1 set:
+`export GRAALVM_HOME=/path/to/graalvm-svm-java17-darwin-m1-gluon-22.1.0.1-Final/Contents/Home`
+or for Intel set:
+`export GRAALVM_HOME=/path/to/graalvm-svm-java17-darwin-gluon-22.1.0.1-Final/Contents/Home`
+
+4. HelloFX
+
+Clone this repo https://github.com/johanvos/gluon-samples/tree/JavaFXlet:
+
+- Either clone it: `git clone --single-branch --branch JavaFXlet https://github.com/johanvos/gluon-samples.git`
+- or download it from https://github.com/johanvos/gluonfx-maven-plugin/archive/refs/heads/staticlib.zip and unzip it.
+https://github.com/johanvos/gluon-samples/archive/refs/heads/JavaFXlet.zip
+
+```
+cd gluon-samples/HelloFX
+mvn clean gluonfx:build gluonfx:staticlib
+```
+After a couple of minutes see that you get this file: `target/gluonfx/arm64-ios/gvm/libHelloFX.a`
+
+5. Xcode
+
+5.1 iOS Application
+
+Create a new iOS Application in Xcode. For convenience, select Objetive-C language.
+
+5.2 Header files
+
+Add the generated header files from target/gluonfx/arm64-ios/gvm/HelloFX/hellofx.hellofx.h and arget/gluonfx/arm64-ios/gvm/HelloFX/graal_isolate.h to the Xcode project.
+For that you can drag and drop them from Finder, selecting "Copy items if needed".
+Edit the hellofx.hellofx.h  file, and replace `#include <graal_isolate.h>` with:
+
+```
+#include "graal_isolate.h"
+```
+
+5.3 Static library
+
+Add the generated library from target/gluonfx/arm64-ios/gvm/libHelloFX.a to the Xcode project.
+For that you can drag and drop it from Finder, selecting "Copy items if needed".
+
+5.4 UIView
+
+Let's add a simple button that you can use to trigger starting the embedded JavaFX app.
+
+When clicking the button, it will invoke `startJavaFXApp` (see implementation in `localgl.m`).
+
+Modify `ViewController.m` as follows:
+
+```
 #import "ViewController.h"
 #import <GLKit/GLKit.h>
 
@@ -23,7 +85,8 @@ ViewController.m:
 
 @end
 
-extern void startJavaFXApp();
+extern void startJavaFXApp(void);
+
 @implementation ViewController
 
 - (void)graalThread:(id)argument {
@@ -40,7 +103,6 @@ extern void startJavaFXApp();
     NSLog(@"Main thread = %@", [NSThread mainThread]);
     [self performSelectorInBackground:@selector(graalThread:) withObject:(NULL)];
     NSLog(@"ACTION DONE!");
-
 }
 
 - (void)viewDidLoad {
@@ -51,20 +113,20 @@ extern void startJavaFXApp();
     
     double mwidth = self.view.frame.size.width;
     
-    CGRect frm0 = CGRectMake(0., 0, mwidth, 120);
+    CGRect frm0 = CGRectMake(0, 0, mwidth, 150);
 
     UIView *topView = [[UIView alloc] initWithFrame: frm0];
     topView.backgroundColor = [UIColor greenColor];
 
-    CGRect br = CGRectMake(100,20,100,30);
+    CGRect br = CGRectMake(100, 100, 100, 30);
     UIButton *button = [[UIButton alloc] initWithFrame:br];
     [button setTitle:@"Click me" forState:UIControlStateNormal];
     [button addTarget:self action:@selector(myAction:) forControlEvents:UIControlEventTouchUpInside];
     [topView addSubview:button];
     [self.view addSubview:topView];
     
-    // Just a silly blue rect that will partially be hidden by the JavaFX app
-    UIView *tmpView = [[UIView alloc] initWithFrame:CGRectMake(10, 200, 200, 100 )];
+    // Just a dummy blue rect that will partially be hidden by the JavaFX app
+    UIView *tmpView = [[UIView alloc] initWithFrame:CGRectMake(10, 200, 200, 100)];
     tmpView.backgroundColor = [UIColor blueColor];
     NSLog(@"Added topview to %@", self.view);
     NSLog(@"Current Thread: %@", [NSThread currentThread]);
@@ -75,21 +137,29 @@ extern void startJavaFXApp();
 }
 
 @end
+```
 
+5.5 Helper file
 
-Helper file: (localgl.m)
+Create a new .m file, name it `localgl.m`, and paste the following content:
+
+```
 #import <Foundation/Foundation.h>
 #import "hellofx.hellofx.h"
 
-extern int JNI_OnLoad_prism_es2();
-extern int JNI_OnLoad_glass();
-extern int JNI_OnLoad_javafx_font();
-extern int JNI_OnLoad_nativeiio();
-extern void Java_com_sun_prism_es2_IOSGLDrawable_nGetDummyDrawable();
-extern void Java_com_sun_glass_ui_ios_IosWindow__1createWindow();
-extern void Java_com_sun_glass_ui_ios_IosView__1create();
-extern void Java_com_sun_glass_ui_ios_IosCursor__1set();
-extern void Java_com_sun_glass_ui_ios_IosGestureSupport__1initIDs();
+extern int JNI_OnLoad_prism_es2(void);
+extern int JNI_OnLoad_glass(void);
+extern int JNI_OnLoad_javafx_font(void);
+extern int JNI_OnLoad_nativeiio(void);
+extern void Java_com_sun_prism_es2_IOSGLDrawable_nGetDummyDrawable(void);
+extern void Java_com_sun_glass_ui_ios_IosWindow__1createWindow(void);
+extern void Java_com_sun_glass_ui_ios_IosView__1create(void);
+extern void Java_com_sun_glass_ui_ios_IosCursor__1set(void);
+extern void Java_com_sun_glass_ui_ios_IosGestureSupport__1initIDs(void);
+
+void loadlibs(void);
+void startJavaFXApp(void);
+
 void loadlibs() {
     JNI_OnLoad_prism_es2();
     JNI_OnLoad_glass();
@@ -117,4 +187,16 @@ void startJavaFXApp() {
         fprintf(stderr, "Couldn't create an isolate, tres = %d", tres);
     }
 }
+```
+
+5.6 Static libs
+
+Add static libs to the Xcode project:
+
+* java static libs (e.g. libjava.a, libzip.a)
+* GraalVM static libs (e.g. libdarwin.a)
+* JavaFX static libs: get those from https://github.com/johanvos/gluonjfx/tree/hybridios fork
+
+6. Build and test
+
 
